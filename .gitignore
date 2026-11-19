@@ -1,0 +1,5 @@
+build/
+render/
+ref/
+canvas/
+.DS_Store
