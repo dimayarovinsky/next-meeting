@@ -60,3 +60,7 @@ That's it. NextMeeting opens at login. Turn that off with **Open at Login** in i
 | `Info.plist` | App name, bundle id, calendar permission text |
 | `build.sh` | Build, sign, install, open |
 | `docs/` | README images, made from `docs/src/*.html` |
+
+## License
+
+MIT. See [LICENSE](LICENSE).
