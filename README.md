@@ -38,7 +38,7 @@ The first time it runs, macOS asks for calendar access. Click **Allow Full Acces
 
 <img src="docs/step4.png" alt="Step 4: NextMeeting in the menu bar, with Open at Login ticked in its menu" width="100%">
 
-That's it. NextMeeting opens at login. Turn that off with **Open at Login** in its menu.
+That's it. NextMeeting asks once whether to open at login. Change that any time with **Open at Login** in its menu.
 
 ## Notes
 

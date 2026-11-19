@@ -21,12 +21,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.menu = menu
         setIcon()
 
-        // Open at login by default, once; the menu toggle can turn it off.
-        if !UserDefaults.standard.bool(forKey: "didSetLoginItem") {
-            try? SMAppService.mainApp.register()
-            UserDefaults.standard.set(true, forKey: "didSetLoginItem")
-        }
-
         store.requestFullAccessToEvents { granted, _ in
             DispatchQueue.main.async {
                 self.hasAccess = granted
@@ -41,6 +35,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                    let e = pending.first(where: { self.meetingLink($0) != nil }) ?? pending.first
                         ?? self.currentEvents().first ?? self.nextEvent() {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.updateReminders(force: e) }
+                }
+                // Ask once whether to open at login, after the calendar prompt so the two don't overlap.
+                if !UserDefaults.standard.bool(forKey: "didSetLoginItem") {
+                    UserDefaults.standard.set(true, forKey: "didSetLoginItem")
+                    self.askOpenAtLogin()
                 }
             }
         }
@@ -103,7 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for s in sources {
             let range = NSRange(s.startIndex..., in: s)
             if let m = Self.linkPattern.firstMatch(in: s, range: range), let r = Range(m.range, in: s) {
-                return URL(string: String(s[r]))
+                var link = String(s[r])
+                // Never open a call over plain http.
+                if link.lowercased().hasPrefix("http://") { link = "https://" + link.dropFirst(7) }
+                return URL(string: link)
             }
         }
         return nil
@@ -360,7 +362,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         else if delta > -60 { parts.append("Starting now") }
         else { parts.append("Started \(Int(-delta / 60)) min ago") }
         if let link { parts.append(serviceName(link)) }
-        if isPending(e) { parts.append("not answered yet") }
+        if isPending(e) {
+            // Anyone can send an invite, so an unanswered one says who it is from.
+            let from = (e.organizer?.name).map { " · from \(truncate($0, 30))" } ?? ""
+            parts.append("not answered yet" + from)
+        }
         return ReminderCard(
             title: title(e),
             subtitle: parts.joined(separator: " · "),
@@ -483,6 +489,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/NextMeeting.txt")
         try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+        // Meeting titles are private: keep the file readable by the owner only.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 
     // MARK: - Actions
@@ -521,6 +529,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func openPrivacy() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")!)
+    }
+
+    func askOpenAtLogin() {
+        let alert = NSAlert()
+        alert.messageText = "Open NextMeeting at login?"
+        alert.informativeText = "You can change this any time with Open at Login in the menu."
+        alert.addButton(withTitle: "Open at Login")
+        alert.addButton(withTitle: "Not Now")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn { try? SMAppService.mainApp.register() }
     }
 
     @objc func toggleLogin() {
