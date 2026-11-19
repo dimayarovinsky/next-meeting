@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/hero.png" alt="NextMeeting in the macOS menu bar: Design review, 25 minutes left, with a Join Google Meet button" width="100%"></p>
+<p align="center"><img src="docs/hero.png" alt="NextMeeting in the macOS menu bar: Design review, 24 minutes left, with its menu open and a Join Google Meet button" width="100%"></p>
 
 # NextMeeting
 
