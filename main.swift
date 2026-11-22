@@ -85,6 +85,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sorted { $0.endDate < $1.endDate }
     }
 
+    /// Current events ending within 12h. A multi-day timed event (an on-call block,
+    /// a trip) would otherwise count down for days in the bar and take the Now card.
+    func countdownCurrentEvents() -> [EKEvent] {
+        let limit = Date().addingTimeInterval(12 * 60 * 60)
+        return currentEvents().filter { $0.endDate <= limit }
+    }
+
     /// The next timed event starting before `until` (default: the end of today).
     func nextEvent(until: Date? = nil) -> EKEvent? {
         let now = Date()
@@ -193,12 +200,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var text: String?
         var event: EKEvent?
 
-        // Only count down to something within the horizon; a multi-day timed event
-        // (e.g. "on call · 153h left") is just noise.
-        let horizon: TimeInterval = 12 * 60 * 60
-        let cur = currentEvents().first { $0.endDate.timeIntervalSince(now) <= horizon }
-        // Look past midnight: at 23:00 a meeting at 08:00 is still within the horizon.
-        let next = nextEvent(until: now.addingTimeInterval(horizon))
+        let cur = countdownCurrentEvents().first
+        // The next meeting within 3h, looking past midnight (at 23:30, a 01:00 call),
+        // so the bar stays quiet in the evening instead of showing tomorrow's first meeting.
+        let next = nextEvent(until: now.addingTimeInterval(3 * 60 * 60))
 
         if let cur {
             event = cur
@@ -217,10 +222,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         guard let text, let event else {
             setIcon()
-            if hasAccess {
-                button.imagePosition = .imageLeading
-                button.title = " No upcoming event"
-            }
             return
         }
         button.image = colorBar(color(event), striped: isPending(event))
@@ -244,7 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // The meeting you're in gets the Now card; any other current or upcoming one a plain row.
         var featured: [(String, EKEvent)] = []
-        var currents = currentEvents()
+        var currents = countdownCurrentEvents()
         if !currents.isEmpty {
             let cur = currents.removeFirst()
             menu.addItem(nowCardItem(cur, now: now, menu: menu))

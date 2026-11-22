@@ -10,7 +10,7 @@ It reads the calendars you've already added to macOS (Google, iCloud, Exchange).
 
 ## What it does
 
-- **Menu bar countdown.** `Weekly sync · 18m left` during a meeting, `in 12m` before the next one. The small bar next to it fills up as the meeting goes on and turns orange in the last 5 minutes.
+- **Menu bar countdown.** `Weekly sync · 18m left` during a meeting, `in 12m` before the next one. The small bar next to it fills up as the meeting goes on and turns orange in the last 5 minutes. It counts down only to a meeting that ends within 12 hours or starts within 3, so a multi-day event like an on-call block doesn't take over the bar. With nothing in range, the bar shows just the calendar icon.
 - **Now card.** Opening the menu shows the meeting you're in, how far through it you are, and a Join button. `⌘J` joins while the menu is open.
 - **One-minute reminder.** A card slides down from the menu bar with Join and dismiss buttons. It stays until you join, dismiss it, or 5 minutes after the start, so you can still catch it if you're late. Meetings that start together stack.
 - **Rest of today and tomorrow** in the menu, with all-day events, calendar colours, and invites you haven't answered marked ⚠︎. Declined and cancelled meetings are hidden.
