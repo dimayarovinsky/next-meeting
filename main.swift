@@ -85,10 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sorted { $0.endDate < $1.endDate }
     }
 
-    func nextEvent() -> EKEvent? {
+    /// The next timed event starting before `until` (default: the end of today).
+    func nextEvent(until: Date? = nil) -> EKEvent? {
         let now = Date()
-        let endOfDay = Calendar.current.startOfDay(for: now).addingTimeInterval(86400)
-        return events(from: now, to: endOfDay).first { !$0.isAllDay && $0.startDate > now }
+        let end = until ?? Calendar.current.startOfDay(for: now).addingTimeInterval(86400)
+        return events(from: now, to: end).first { !$0.isAllDay && $0.startDate > now }
     }
 
     // MARK: - Meeting links
@@ -192,11 +193,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var text: String?
         var event: EKEvent?
 
-        // Only count down to something within the horizon; a multi-day event
-        // (e.g. "on call · 153h left") or a meeting days away is just noise.
+        // Only count down to something within the horizon; a multi-day timed event
+        // (e.g. "on call · 153h left") is just noise.
         let horizon: TimeInterval = 12 * 60 * 60
         let cur = currentEvents().first { $0.endDate.timeIntervalSince(now) <= horizon }
-        let next = nextEvent().flatMap { $0.startDate.timeIntervalSince(now) <= horizon ? $0 : nil }
+        // Look past midnight: at 23:00 a meeting at 08:00 is still within the horizon.
+        let next = nextEvent(until: now.addingTimeInterval(horizon))
 
         if let cur {
             event = cur
