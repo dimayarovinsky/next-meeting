@@ -192,15 +192,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var text: String?
         var event: EKEvent?
 
-        if let cur = currentEvents().first {
+        // Only count down to something within the horizon; a multi-day event
+        // (e.g. "on call · 153h left") or a meeting days away is just noise.
+        let horizon: TimeInterval = 12 * 60 * 60
+        let cur = currentEvents().first { $0.endDate.timeIntervalSince(now) <= horizon }
+        let next = nextEvent().flatMap { $0.startDate.timeIntervalSince(now) <= horizon ? $0 : nil }
+
+        if let cur {
             event = cur
             text = "\(truncate(title(cur), 30)) · \(duration(cur.endDate.timeIntervalSince(now))) left"
             // A meeting starting within 5 minutes takes over the countdown.
-            if let next = nextEvent(), next.startDate.timeIntervalSince(now) <= 5 * 60 {
+            if let next, next.startDate.timeIntervalSince(now) <= 5 * 60 {
                 event = next
                 text = "\(truncate(title(next), 30)) · in \(duration(next.startDate.timeIntervalSince(now)))"
             }
-        } else if let next = nextEvent() {
+        } else if let next {
             event = next
             text = "\(truncate(title(next), 30)) · in \(duration(next.startDate.timeIntervalSince(now)))"
         }
@@ -209,6 +215,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         guard let text, let event else {
             setIcon()
+            if hasAccess {
+                button.imagePosition = .imageLeading
+                button.title = " No upcoming event"
+            }
             return
         }
         button.image = colorBar(color(event), striped: isPending(event))
