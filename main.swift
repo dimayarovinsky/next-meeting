@@ -85,10 +85,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sorted { $0.endDate < $1.endDate }
     }
 
-    func nextEvent() -> EKEvent? {
+    /// Current events ending within 12h. A multi-day timed event (an on-call block,
+    /// a trip) would otherwise count down for days in the bar and take the Now card.
+    func countdownCurrentEvents() -> [EKEvent] {
+        let limit = Date().addingTimeInterval(12 * 60 * 60)
+        return currentEvents().filter { $0.endDate <= limit }
+    }
+
+    /// The next timed event starting before `until` (default: the end of today).
+    func nextEvent(until: Date? = nil) -> EKEvent? {
         let now = Date()
-        let endOfDay = Calendar.current.startOfDay(for: now).addingTimeInterval(86400)
-        return events(from: now, to: endOfDay).first { !$0.isAllDay && $0.startDate > now }
+        let end = until ?? Calendar.current.startOfDay(for: now).addingTimeInterval(86400)
+        return events(from: now, to: end).first { !$0.isAllDay && $0.startDate > now }
     }
 
     // MARK: - Meeting links
@@ -192,15 +200,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var text: String?
         var event: EKEvent?
 
-        if let cur = currentEvents().first {
+        let cur = countdownCurrentEvents().first
+        // The next meeting within 3h, looking past midnight (at 23:30, a 01:00 call),
+        // so the bar stays quiet in the evening instead of showing tomorrow's first meeting.
+        let next = nextEvent(until: now.addingTimeInterval(3 * 60 * 60))
+
+        if let cur {
             event = cur
             text = "\(truncate(title(cur), 30)) · \(duration(cur.endDate.timeIntervalSince(now))) left"
             // A meeting starting within 5 minutes takes over the countdown.
-            if let next = nextEvent(), next.startDate.timeIntervalSince(now) <= 5 * 60 {
+            if let next, next.startDate.timeIntervalSince(now) <= 5 * 60 {
                 event = next
                 text = "\(truncate(title(next), 30)) · in \(duration(next.startDate.timeIntervalSince(now)))"
             }
-        } else if let next = nextEvent() {
+        } else if let next {
             event = next
             text = "\(truncate(title(next), 30)) · in \(duration(next.startDate.timeIntervalSince(now)))"
         }
@@ -232,7 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // The meeting you're in gets the Now card; any other current or upcoming one a plain row.
         var featured: [(String, EKEvent)] = []
-        var currents = currentEvents()
+        var currents = countdownCurrentEvents()
         if !currents.isEmpty {
             let cur = currents.removeFirst()
             menu.addItem(nowCardItem(cur, now: now, menu: menu))
